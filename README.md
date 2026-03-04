@@ -22,3 +22,11 @@ Invio is a smart inventory management system for small retailers. This repositor
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+## Deployment version endpoint
+
+- `GET /version`
+- On app startup, the application recreates `version.json` (deletes old file if present).
+- Metadata is generated automatically: `application_name`, `last_deployment`, `last_code_commit`.
+- `last_deployment` is emitted in Indian Standard Time (`UTC+05:30`).
+- The endpoint reads `version.json` and returns it as JSON.
