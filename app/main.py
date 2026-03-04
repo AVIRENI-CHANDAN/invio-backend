@@ -14,7 +14,7 @@ VERSION_FILE_NAME = "version.json"
 VERSION_FILE = BASE_DIR / VERSION_FILE_NAME
 APPLICATION_NAME = "invio-backend"
 APPLICATION_VERSION = "0.1.0"
-INDIAN_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="IST")
+APPLICATION_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="IST")
 
 
 def get_git_commit() -> str:
@@ -45,7 +45,7 @@ def build_version_payload() -> dict[str, str]:
     Returns:
         dict[str, str]: _description_
     """
-    deployed_at = datetime.now(INDIAN_TIMEZONE).replace(microsecond=0).isoformat()
+    deployed_at = datetime.now(APPLICATION_TIMEZONE).replace(microsecond=0).isoformat()
     return {
         "application_name": APPLICATION_NAME,
         "application_version": APPLICATION_VERSION,
