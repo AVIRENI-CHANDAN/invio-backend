@@ -29,6 +29,16 @@ You can also start it by executing the entrypoint file directly:
 python app/main.py
 ```
 
+## Run tests
+
+Run the test suite from the repository root:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The current API tests use Python's built-in `unittest`, FastAPI's `TestClient`, and an isolated in-memory SQLite database.
+
 ## Deployment version endpoint
 
 - `GET /version`
