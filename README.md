@@ -19,6 +19,12 @@ Invio is a smart inventory management system for small retailers. This repositor
 
 ## Start the api
 
+Install dependencies into your project environment first:
+
+```bash
+venv\Scripts\python -m pip install -r requirements.txt
+```
+
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -32,6 +38,18 @@ python app/main.py
 ## Run tests
 
 Run the test suite from the repository root:
+
+```bash
+venv\Scripts\python -m unittest discover -s tests -v
+```
+
+If your IDE shows import errors during test collection, make sure it is using the project interpreter:
+
+```bash
+d:\Invio\backend\venv\Scripts\python.exe
+```
+
+Or install the dependencies into whichever interpreter you selected:
 
 ```bash
 python -m unittest discover -s tests -v
