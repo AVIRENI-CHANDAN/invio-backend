@@ -1,20 +1,40 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import json
+import os
 from pathlib import Path
 import subprocess
+import sys
+from app.config import (
+    ApplicationEnvironmentConig,
+    VERSION_FILE_NAME,
+    APPLICATION_NAME,
+    APPLICATION_VERSION,
+    APPLICATION_TIMEZONE,
+)
 
 from fastapi import FastAPI, HTTPException
-from typing import Any
+from typing import Any, cast
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-VERSION_FILE_NAME = "version.json"
 VERSION_FILE = BASE_DIR / VERSION_FILE_NAME
-APPLICATION_NAME = "invio-backend"
-APPLICATION_VERSION = "0.1.0"
-APPLICATION_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="IST")
+APPLICATION_ENVIRONMENT = cast(
+    int,
+    f"{os.getenv("APPLICATION_ENVIRONMENT", ApplicationEnvironmentConig.DEVELOPMENT)}".strip(),
+)
+APPLICATION_RELOAD = APPLICATION_ENVIRONMENT == ApplicationEnvironmentConig.DEVELOPMENT
+APP_PORT = int(os.getenv("APP_PORT", "8000"))
+APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
+
+if __package__ in {None, ""}:
+    repo_root = str(BASE_DIR)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+from app.api import api_router
+from app.db.session import init_db
 
 
 def get_git_commit() -> str:
@@ -75,6 +95,7 @@ def write_version_file() -> dict[str, str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Deployment metadata is regenerated each app startup."""
+    init_db()
     write_version_file()
     yield
 
@@ -85,6 +106,7 @@ app: FastAPI = FastAPI(
     description="Basic OpenAPI application for the Invio backend.",
     lifespan=lifespan,
 )
+app.include_router(api_router)
 
 
 @app.get("/version", tags=["Deployment"])
@@ -121,3 +143,18 @@ def get_version() -> dict[str, str]:
         ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+def run() -> None:
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host=APP_HOST,
+        port=APP_PORT,
+        reload=APPLICATION_RELOAD,
+    )
+
+
+if __name__ == "__main__":
+    run()

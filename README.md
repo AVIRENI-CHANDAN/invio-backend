@@ -23,6 +23,12 @@ Invio is a smart inventory management system for small retailers. This repositor
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+You can also start it by executing the entrypoint file directly:
+
+```bash
+python app/main.py
+```
+
 ## Deployment version endpoint
 
 - `GET /version`
@@ -30,3 +36,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Metadata is generated automatically: `application_name`, `last_deployment`, `last_code_commit`.
 - `last_deployment` is emitted in Indian Standard Time (`UTC+05:30`).
 - The endpoint reads `version.json` and returns it as JSON.
+
+## Generalized stock DB model
+
+- SQLAlchemy base/time helpers: `app/db/base.py`
+- Stock ORM model: `app/db/models/stock.py`
+- Table name: `stock_items`
+- Supports generalized item types with `kind` enum: `product`, `ingredient`, `material`, `other`
+- Enforces tenant-SKU uniqueness with DB constraint: (`tenant_id`, `sku`)
