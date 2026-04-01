@@ -4,6 +4,8 @@ VERSION_FILE_NAME = "version.json"
 APPLICATION_NAME = "invio-backend"
 APPLICATION_VERSION = "0.1.0"
 APPLICATION_TIMEZONE = timezone(timedelta(hours=5, minutes=30), name="IST")
+APPLICATION_TITLE = "Invio Backend API"
+APPLICATION_DESCRIPTION = "Basic OpenAPI application for the Invio backend."
 
 
 class ApplicationEnvironmentConig:
