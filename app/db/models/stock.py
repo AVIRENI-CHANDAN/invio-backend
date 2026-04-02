@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Enum,
+    ForeignKey,
     Index,
     Numeric,
     String,
@@ -17,7 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, ist_now
 
@@ -130,11 +131,32 @@ class StockItem(Base):
         nullable=False,
         default=Decimal("0"),
     )
-    max_stock_level: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
+    max_stock_level: Mapped[Decimal | None] = mapped_column(
+        Numeric(18, 4), nullable=True
+    )
     default_location_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    expiry_tracking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    batch_tracking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    serial_tracking_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    expiry_tracking_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    batch_tracking_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    serial_tracking_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+
+    components: Mapped[list["StockItemComponent"]] = relationship(
+        "StockItemComponent",
+        back_populates="parent",
+        foreign_keys="[StockItemComponent.parent_id]",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    used_as_component: Mapped[list["StockItemComponent"]] = relationship(
+        "StockItemComponent",
+        back_populates="ingredient",
+        foreign_keys="[StockItemComponent.ingredient_id]",
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -149,3 +171,40 @@ class StockItem(Base):
     )
     created_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class StockItemComponent(Base):
+    __tablename__ = "stock_item_components"
+    __table_args__ = (
+        UniqueConstraint(
+            "parent_id",
+            "ingredient_id",
+            name="uq_stock_item_components_parent_ingredient",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("stock_items.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("stock_items.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    quantity: Mapped[Decimal] = mapped_column(
+        Numeric(18, 4), nullable=False, default=Decimal("1")
+    )
+
+    parent: Mapped[StockItem] = relationship(
+        "StockItem",
+        back_populates="components",
+        foreign_keys=[parent_id],
+    )
+    ingredient: Mapped[StockItem] = relationship(
+        "StockItem",
+        back_populates="used_as_component",
+        foreign_keys=[ingredient_id],
+    )

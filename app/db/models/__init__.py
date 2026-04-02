@@ -1,7 +1,8 @@
-from .stock import StockItem, StockKind, StockStatus, UnitOfMeasure
+from .stock import StockItem, StockItemComponent, StockKind, StockStatus, UnitOfMeasure
 
 __all__ = [
     "StockItem",
+    "StockItemComponent",
     "StockKind",
     "StockStatus",
     "UnitOfMeasure",
