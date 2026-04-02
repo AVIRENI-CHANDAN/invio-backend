@@ -9,6 +9,20 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.db.models import StockKind, StockStatus, UnitOfMeasure
 
 
+class StockComponentBase(BaseModel):
+    ingredient_id: uuid.UUID
+    quantity: Decimal = Field(
+        default=Decimal("1"),
+        ge=Decimal("0.0001"),
+        max_digits=18,
+        decimal_places=4,
+    )
+
+
+class StockComponentRead(StockComponentBase):
+    ingredient_name: str | None = None
+
+
 class StockCreate(BaseModel):
     tenant_id: str = Field(..., max_length=64)
     kind: StockKind = StockKind.OTHER
@@ -72,11 +86,13 @@ class StockCreate(BaseModel):
     expiry_tracking_enabled: bool = False
     batch_tracking_enabled: bool = False
     serial_tracking_enabled: bool = False
+    components: list[StockComponentBase] = Field(default_factory=list)
     created_by: str | None = Field(default=None, max_length=128)
     updated_by: str | None = Field(default=None, max_length=128)
 
 
 class StockUpdate(BaseModel):
+    components: list[StockComponentBase] | None = None
     tenant_id: str | None = Field(default=None, max_length=64)
     kind: StockKind | None = None
     sku: str | None = Field(default=None, max_length=64)
@@ -176,3 +192,4 @@ class StockRead(BaseModel):
     updated_at: datetime
     created_by: str | None
     updated_by: str | None
+    components: list[StockComponentRead] = []
