@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.models import StockItem, StockKind, StockStatus
+from app.db.models import StockItem, StockItemComponent, StockKind, StockStatus
 from app.db.session import get_db
 from app.schemas.stock import StockCreate, StockRead, StockUpdate
 
@@ -40,7 +40,24 @@ def create_stock(
     payload: StockCreate,
     db: Session = Depends(get_db),
 ) -> StockItem:
-    stock = StockItem(**payload.model_dump())
+    payload_data = payload.model_dump(exclude={"components"})
+    components_data = payload.model_dump().get("components", [])
+
+    stock = StockItem(**payload_data)
+    for component in components_data:
+        ingredient = db.get(StockItem, component["ingredient_id"])
+        if ingredient is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ingredient stock item '{component['ingredient_id']}' not found",
+            )
+        stock.components.append(
+            StockItemComponent(
+                ingredient_id=component["ingredient_id"],
+                quantity=component["quantity"],
+            )
+        )
+
     db.add(stock)
     _commit_or_raise_conflict(db)
     db.refresh(stock)
@@ -77,6 +94,49 @@ def get_stock(
     return _get_stock_or_404(db, stock_id)
 
 
+@router.get("/{stock_id}/can-make")
+def can_make_stock(
+    stock_id: uuid.UUID,
+    db: Session = Depends(get_db),
+) -> dict[str, object]:
+    stock = _get_stock_or_404(db, stock_id)
+
+    if stock.kind != StockKind.PRODUCT:
+        return {
+            "can_make": True,
+            "reason": "Not a product item, no ingredient recipe required",
+        }
+
+    if not stock.components:
+        return {
+            "can_make": False,
+            "reason": "No ingredient linkage configured for this product",
+        }
+
+    missing_ingredients = [
+        comp.ingredient_id for comp in stock.components if comp.ingredient is None
+    ]
+    if missing_ingredients:
+        return {
+            "can_make": False,
+            "reason": "One or more linked ingredients do not exist",
+            "missing_ingredient_ids": missing_ingredients,
+        }
+
+    return {
+        "can_make": True,
+        "component_count": len(stock.components),
+        "details": [
+            {
+                "ingredient_id": comp.ingredient_id,
+                "ingredient_name": comp.ingredient.name,
+                "quantity": str(comp.quantity),
+            }
+            for comp in stock.components
+        ],
+    }
+
+
 @router.patch("/{stock_id}", response_model=StockRead)
 def update_stock(
     stock_id: uuid.UUID,
@@ -84,8 +144,27 @@ def update_stock(
     db: Session = Depends(get_db),
 ) -> StockItem:
     stock = _get_stock_or_404(db, stock_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    payload_data = payload.model_dump(exclude_unset=True)
+
+    components_data = payload_data.pop("components", None)
+    for field, value in payload_data.items():
         setattr(stock, field, value)
+
+    if components_data is not None:
+        stock.components.clear()
+        for component in components_data:
+            ingredient = db.get(StockItem, component["ingredient_id"])
+            if ingredient is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Ingredient stock item '{component['ingredient_id']}' not found",
+                )
+            stock.components.append(
+                StockItemComponent(
+                    ingredient_id=component["ingredient_id"],
+                    quantity=component["quantity"],
+                )
+            )
 
     _commit_or_raise_conflict(db)
     db.refresh(stock)
